@@ -1,83 +1,194 @@
-Dice Roller Service - User Manual
-Overview
+Benternet Dobbelstenen Service
+==============================
 
-The Dice Roller is a network service that allows you to perform virtual dice rolls. This manual explains how to use the service as a client.
-Getting Started
-Prerequisites
+Een netwerkdienst voor dobbelstenen gebaseerd op het Benternet berichtensysteem met ZeroMQ en Qt. Deze service stelt clients in staat om dobbelsteenworpen aan te vragen met verschillende opties.
 
-    Qt framework installed
-    Benternet library configured in your project
-    Basic knowledge of C++ programming
+Functies
+--------
 
-Using the Dice Roller Service
-Step 1: Set Up Your Connection
+1. Basis Dobbelsteenworpen: Gooi elk aantal en type dobbelstenen (bijv. 1d20, 3d6)
+2. Modificaties: Tel waarden op of trek ze af van worpen (bijv. 1d20+5)
+3. Voordeel/Nadeel: Gooi tweemaal en behoud het hoogste (adv) of laagste (dis) resultaat
+4. DC Controles: Vergelijk werpresultaten met een moeilijkheidsgraad (DC)
+5. Aangepaste Identificaties: Voeg aangepaste identificaties toe aan je verzoeken
 
-First, initialize your Benternet connection:
+Berichtformaat
+-------------
 
-QCoreApplication app(argc, argv);
-QSharedPointer benternet = QSharedPointer<Benternet>(new Benternet(&app));
-benternet->start();
+Basis Worp:
+dice>roll>[identificatie>]XdY[±Z][adv/dis]
 
+Worp tegen DC:
+dice>rollvs>[identificatie>]XdY[±Z][adv/dis]>DC
 
-Step 2: Subscribe to Results
+Waarbij:
+- X = Aantal dobbelstenen (optioneel, standaard 1)
+- Y = Aantal zijden op de dobbelsteen
+- Z = Modificatie (optioneel)
+- adv/dis = Gooi met voordeel of nadeel (optioneel)
+- identificatie = Aangepaste identificatie (optioneel)
+- DC = Moeilijkheidsgraad om tegen te controleren
 
-Subscribe to the results channel to receive responses:
+Antwoordformaat
+--------------
 
-benternet->subscribe("dice>result>");
+Basis Worp Antwoord:
+dice>result>[identificatie>]N
 
+Worp tegen DC Antwoord:
+dice>result>[identificatie>]pass|fail
 
-Step 3: Create a Response Handler
+Uitgebreide Voorbeelden
+----------------------
 
-Set up a handler to process the dice roll results:
+Basis Dobbelsteenworpen:
 
-QObject::connect(benternet.data(), &Benternet::onReceive, [](const QByteArray &message) {
-    QString result = QString(message.split('>').last());
-    qDebug() << "Roll result:" << result;
-    // Process your result here
-});
+1. Enkele d20
+   Verzoek: dice>roll>1d20
+   Antwoord: dice>result>17
 
+2. Meerdere dobbelstenen
+   Verzoek: dice>roll>4d6
+   Antwoord: dice>result>14
 
-Step 4: Send Roll Requests
+3. Dobbelsteen met andere zijden
+   Verzoek: dice>roll>1d12
+   Antwoord: dice>result>8
 
-Send your dice roll requests using the following format:
+4. Standaard 1 dobbelsteen (zonder aantal)
+   Verzoek: dice>roll>d10
+   Antwoord: dice>result>6
 
-// Format: dice>roll>NdM
-// Where N = number of dice, M = number of sides
+Dobbelsteenworpen met Modificaties:
 
-// Example: Roll 1d20 (one 20-sided die)
-benternet->send("dice>roll>1d20");
+1. Positieve modificatie
+   Verzoek: dice>roll>1d20+5
+   Antwoord: dice>result>23
 
-// Example: Roll 3d6 (three 6-sided dice)
-benternet->send("dice>roll>3d6");
+2. Negatieve modificatie
+   Verzoek: dice>roll>1d20-3
+   Antwoord: dice>result>12
 
+3. Meerdere dobbelstenen met modificatie
+   Verzoek: dice>roll>2d8+4
+   Antwoord: dice>result>15
 
-Request Format
+Dobbelsteenworpen met Voordeel/Nadeel:
 
-The service uses standard dice notation:
+1. Worp met voordeel
+   Verzoek: dice>roll>1d20adv
+   Antwoord: dice>result>18
 
-    Format: NdM where:
-        N is the number of dice to roll (must be a positive integer)
-        d is the separator
-        M is the number of sides on each die (must be a positive integer)
+2. Worp met nadeel
+   Verzoek: dice>roll>1d20dis
+   Antwoord: dice>result>7
 
-Examples:
+3. Worp met voordeel en modificatie
+   Verzoek: dice>roll>1d20+2adv
+   Antwoord: dice>result>19
 
-    1d20 - Roll one 20-sided die
-    3d6 - Roll three 6-sided dice
-    2d10 - Roll two 10-sided dice
+Dobbelsteenworpen met Identificaties:
 
-Response Format
+1. Aanvalsworp
+   Verzoek: dice>roll>aanval>1d20
+   Antwoord: dice>result>aanval>15
 
-The service will respond with either:
+2. Vaardigheidscheck met modificatie
+   Verzoek: dice>roll>acrobatiek>1d20+3
+   Antwoord: dice>result>acrobatiek>18
 
-    A numeric result representing the total sum of all dice rolled
-    An error message if your request was invalid
+3. Schadeberekening
+   Verzoek: dice>roll>schade>2d6+2
+   Antwoord: dice>result>schade>11
 
-Error Messages
+DC Controles:
 
-You may receive the following error messages:
+1. Basis DC check
+   Verzoek: dice>rollvs>1d20>15
+   Antwoord: dice>result>pass (als worp ≥ 15)
+   Antwoord: dice>result>fail (als worp < 15)
 
-    Format Error: Error: Expected format is [DiceAmount]d[DiceSize]. E.g.: 1d20.
-    Invalid Parameters: Error: DiceAmount and DiceSize must be positive integers.
-    Internal Error: Internal service error.
+2. DC check met modificatie
+   Verzoek: dice>rollvs>1d20+4>18
+   Antwoord: dice>result>pass (als worp+4 ≥ 18)
+   Antwoord: dice>result>fail (als worp+4 < 18)
 
+3. DC check met voordeel
+   Verzoek: dice>rollvs>1d20adv>12
+   Antwoord: dice>result>pass (als hoogste worp ≥ 12)
+   Antwoord: dice>result>fail (als hoogste worp < 12)
+
+4. DC check met identificatie
+   Verzoek: dice>rollvs>sluipen>1d20+5>17
+   Antwoord: dice>result>sluipen>pass (als worp+5 ≥ 17)
+   Antwoord: dice>result>sluipen>fail (als worp+5 < 17)
+
+5. Complexe DC check
+   Verzoek: dice>rollvs>redding>1d20-1dis>10
+   Antwoord: dice>result>redding>pass (als laagste worp-1 ≥ 10)
+   Antwoord: dice>result>redding>fail (als laagste worp-1 < 10)
+
+Foutafhandeling
+--------------
+
+De service geeft foutmeldingen terug voor ongeldige verzoeken:
+
+dice>result>[identificatie>]Error: Expected format is [DiceAmount]d[DiceSize](+/-[Modifier])([dis/adv]). E.g.: 1d20.
+
+Technische Details
+----------------
+
+De service gebruikt:
+- Een beveiligde willekeurige getallengenerator (QRandomGenerator::securelySeeded())
+- Reguliere expressies voor het verwerken van invoer
+- ZeroMQ voor netwerkberichten via Benternet
+- Qt voor event-driven architectuur
+
+Code Implementatie
+----------------
+
+De belangrijkste componenten zijn:
+
+1. Regex patroon voor dobbelsteenverzoeken:
+   R"-(^(?<amount>\d+){,1}d(?<faces>\d+)(?<modifier>[+-]\d+){,1}(?<advdis>(adv)|(dis)){,1}$)-"
+
+2. Dobbelsteenworp functie:
+   QByteArray doRoll(QString rollRequest, QString ident) {
+       static QRandomGenerator rng = QRandomGenerator::securelySeeded();
+       // ...
+   }
+
+3. DC check functie:
+   QByteArray doRollVs(QString result, QString dc, QString ident) {
+       // ...
+   }
+
+4. Berichtverwerking:
+   QObject::connect(benternet.data(), &Benternet::onReceive, [&](const QByteArray &message) {
+       // ...
+   });
+
+Gebruik in Spelomgevingen
+-----------------------
+
+Deze service is ideaal voor:
+1. Online rollenspellen (RPGs)
+2. Virtuele bordspellen
+3. Geautomatiseerde spelomgevingen
+4. Toepassingen die eerlijke willekeurige getallen nodig hebben
+
+Bouwen en Uitvoeren
+-----------------
+
+1. Zorg ervoor dat je de vereiste afhankelijkheden hebt:
+   - Qt5
+   - ZeroMQ
+   - nzmqt
+   - Benternet bibliotheek
+
+2. Bouw het project:
+   qmake
+   make
+
+3. Voer de service uit:
+   ./dice-service
