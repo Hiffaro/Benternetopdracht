@@ -38,6 +38,64 @@ dice>result>[identificatie>]N
 Worp tegen DC Antwoord:
 dice>result>[identificatie>]pass|fail
 
+Terminal Voorbeelden
+-------------------
+
+Basis Dobbelsteenworpen:
+```cpp
+> dice>roll>1d20                    | dice>result>17
+> dice>roll>4d6                     | dice>result>14
+> dice>roll>1d12                    | dice>result>8
+> dice>roll>d10                     | dice>result>6
+```
+Dobbelsteenworpen met Modificaties:
+```cpp
+> dice>roll>1d20+5                  | dice>result>23
+> dice>roll>1d20-3                  | dice>result>12
+> dice>roll>2d8+4                   | dice>result>15
+```
+
+Dobbelsteenworpen met Voordeel/Nadeel:
+```cpp
+> dice>roll>1d20adv                 | dice>result>18
+> dice>roll>1d20dis                 | dice>result>7
+> dice>roll>1d20+2adv               | dice>result>19
+```
+
+Dobbelsteenworpen met Identificaties:
+```cpp
+> dice>roll>aanval>1d20             | dice>result>aanval>15
+> dice>roll>acrobatiek>1d20+3       | dice>result>acrobatiek>18
+> dice>roll>schade>2d6+2            | dice>result>schade>11
+```
+DC Controles:
+```cpp
+> dice>rollvs>1d20>15               | dice>result>pass
+                                    | (of dice>result>fail)
+> dice>rollvs>1d20+4>18             | dice>result>pass
+                                    | (of dice>result>fail)
+> dice>rollvs>1d20adv>12            | dice>result>pass
+                                    | (of dice>result>fail)
+> dice>rollvs>sluipen>1d20+5>17     | dice>result>sluipen>pass
+                                    | (of dice>result>sluipen>fail)
+> dice>rollvs>redding>1d20-1dis>10  | dice>result>redding>pass
+                                   | (of dice>result>redding>fail)
+```
+Foutafhandeling:
+```cpp
+> dice>roll>20                      | dice>result>Error: Expected format is [DiceAmount]d[DiceSize](+/-[Modifier])([dis/adv]). E.g.: 1d20.
+> dice>roll>d                       | dice>result>Error: Expected format is [DiceAmount]d[DiceSize](+/-[Modifier])([dis/adv]). E.g.: 1d20.
+> dice>roll>1d20++3                 | dice>result>Error: Expected format is [DiceAmount]d[DiceSize](+/-[Modifier])([dis/adv]). E.g.: 1d20.
+```
+Voorbeeld Sessie:
+```cpp
+> dice>roll>d20                     | dice>result>14
+> dice>roll>aanval>d20+2            | dice>result>aanval>19
+> dice>rollvs>aanval>d20+2>15       | dice>result>aanval>pass
+> dice>roll>schade>2d6+3            | dice>result>schade>12
+> dice>roll>d20adv                  | dice>result>18
+> dice>rollvs>redding>d20-1>12      | dice>result>redding>fail
+```
 Uitgebreide Voorbeelden
 ----------------------
 
@@ -135,47 +193,7 @@ De service geeft foutmeldingen terug voor ongeldige verzoeken:
 
 dice>result>[identificatie>]Error: Expected format is [DiceAmount]d[DiceSize](+/-[Modifier])([dis/adv]). E.g.: 1d20.
 
-Technische Details
-----------------
 
-De service gebruikt:
-- Een beveiligde willekeurige getallengenerator (QRandomGenerator::securelySeeded())
-- Reguliere expressies voor het verwerken van invoer
-- ZeroMQ voor netwerkberichten via Benternet
-- Qt voor event-driven architectuur
-
-Code Implementatie
-----------------
-
-De belangrijkste componenten zijn:
-
-1. Regex patroon voor dobbelsteenverzoeken:
-   R"-(^(?<amount>\d+){,1}d(?<faces>\d+)(?<modifier>[+-]\d+){,1}(?<advdis>(adv)|(dis)){,1}$)-"
-
-2. Dobbelsteenworp functie:
-   QByteArray doRoll(QString rollRequest, QString ident) {
-       static QRandomGenerator rng = QRandomGenerator::securelySeeded();
-       // ...
-   }
-
-3. DC check functie:
-   QByteArray doRollVs(QString result, QString dc, QString ident) {
-       // ...
-   }
-
-4. Berichtverwerking:
-   QObject::connect(benternet.data(), &Benternet::onReceive, [&](const QByteArray &message) {
-       // ...
-   });
-
-Gebruik in Spelomgevingen
------------------------
-
-Deze service is ideaal voor:
-1. Online rollenspellen (RPGs)
-2. Virtuele bordspellen
-3. Geautomatiseerde spelomgevingen
-4. Toepassingen die eerlijke willekeurige getallen nodig hebben
 
 Bouwen en Uitvoeren
 -----------------
