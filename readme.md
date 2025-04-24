@@ -205,8 +205,14 @@ Bouwen en Uitvoeren
    - Benternet bibliotheek
 
 2. Bouw het project:
+
+```cpp
    qmake
    make
+   ```
 
 3. Voer de service uit:
+
+```cpp
    ./dice-service
+```
