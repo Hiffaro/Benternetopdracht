@@ -1,11 +1,8 @@
-```markdown
 # Benternet Dobbelstenen Service
-==============================
 
 Een netwerkdienst voor dobbelstenen gebaseerd op het Benternet berichtensysteem met ZeroMQ en Qt. Deze service stelt clients in staat om dobbelsteenworpen aan te vragen met verschillende opties.
 
 ## Functies
---------
 
 1. Basis Dobbelsteenworpen: Gooi elk aantal en type dobbelstenen (bijv. 1d20, 3d6)
 2. Modificaties: Tel waarden op of trek ze af van worpen (bijv. 1d20+5)
@@ -14,7 +11,6 @@ Een netwerkdienst voor dobbelstenen gebaseerd op het Benternet berichtensysteem 
 5. Aangepaste Identificaties: Voeg aangepaste identificaties toe aan je verzoeken
 
 ## Berichtformaat
--------------
 
 Basis Worp:
 ```
@@ -35,7 +31,6 @@ Waarbij:
 - DC = Moeilijkheidsgraad om tegen te controleren
 
 ## Antwoordformaat
---------------
 
 Basis Worp Antwoord:
 ```
@@ -48,7 +43,6 @@ dice>result>[identificatie>]pass|fail
 ```
 
 ## Terminal Voorbeelden
--------------------
 
 Basis Dobbelsteenworpen:
 ```
@@ -107,7 +101,6 @@ Voorbeeld Sessie:
 ```
 
 ## Uitgebreide Voorbeelden
-----------------------
 
 Basis Dobbelsteenworpen:
 
@@ -197,7 +190,6 @@ DC Controles:
    Antwoord: dice>result>redding>fail (als laagste worp-1 < 10)
 
 ## Foutafhandeling
---------------
 
 De service geeft foutmeldingen terug voor ongeldige verzoeken:
 
@@ -206,7 +198,6 @@ dice>result>[identificatie>]Error: Expected format is [DiceAmount]d[DiceSize](+/
 ```
 
 ## Bouwen en Uitvoeren
------------------
 
 ### Vereisten
 
@@ -295,7 +286,6 @@ make
 ```
 
 ## Probleemoplossing
-----------------
 
 ### Veelvoorkomende Bouwproblemen
 
@@ -431,7 +421,6 @@ Als je problemen tegenkomt die hier niet worden behandeld:
 - Open een issue op de GitHub-repository met gedetailleerde informatie over je probleem
 
 ## Netwerkarchitectuur
-------------------
 
 De Benternet Dobbelstenen Service maakt gebruik van het Benternet berichtensysteem, dat is gebaseerd op ZeroMQ. Hieronder is een vereenvoudigd schema van de architectuur:
 
@@ -453,5 +442,3 @@ De service gebruikt het publish/subscribe patroon van ZeroMQ:
 - Clients publiceren verzoeken naar deze topics
 - De service publiceert resultaten naar het topic ```dice>result>```
 - Clients kunnen zich abonneren op dit topic om resultaten te ontvangen
-```
-
