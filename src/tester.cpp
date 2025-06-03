@@ -5,10 +5,13 @@
 #include <QtCore>
 #include <QtNetwork>
 
+int ctr = 0;
+
 QByteArray generateRequest(QRandomGenerator *rng) {
     bool addModifier = rng->bounded(2) == 1;
     int addedModifier = rng->bounded(31) - 15;
     int addedAdvDis = rng->bounded(3);
+    bool superAdvDis = rng->bounded(2) == 1;
     bool addDc = rng->bounded(2) == 1;
     bool addIdent = rng->bounded(2) == 1;
     int addedDc = rng->bounded(31);
@@ -27,6 +30,7 @@ QByteArray generateRequest(QRandomGenerator *rng) {
     }
     if(addedAdvDis == 1) toSend += QByteArray("adv");
     if(addedAdvDis == 2) toSend += QByteArray("dis");
+    if(addedAdvDis != 0 && superAdvDis) toSend += QByteArray("+");
     if(addDc) {
         toSend += QByteArray(">");
         toSend += QByteArray::number(addedDc);
@@ -46,12 +50,17 @@ int main(int argc, char **argv) {
     // Setup task forwarding.
     qDebug() << "Setting up response parsing...";
     QObject::connect(benternet.data(), &Benternet::onReceive, [&](const QByteArray &message) {
-        qDebug() << "Result:" << QString(message);
-        QTimer::singleShot((rng->bounded(50) + 1) * 100, [&]() {
-            auto toSend = generateRequest(rng);
-            qDebug() << "Sending request:" << QString(toSend);
-            benternet->send(toSend);
-        });
+        qDebug().noquote() << "Result:" << QString(message);
+        if(ctr % 2 == 0) {
+            QTimer::singleShot((rng->bounded(50) + 1) * 100, [&]() {
+                auto toSend = generateRequest(rng);
+                qDebug() << "Sending request:" << QString(toSend);
+                benternet->send(toSend);
+                benternet->send("dice>history");
+            });
+        }
+        ctr++;
+        ctr %= 2;
     });
 
     // Subscribe to our endpoints.

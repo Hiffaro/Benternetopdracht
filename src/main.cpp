@@ -5,6 +5,8 @@
 #include <QtCore>
 #include <QtNetwork>
 
+QQueue<QByteArray> result_queue;
+
 QByteArray doRollVs(QString result, QString dc, QString ident) {
     if(result.contains("Error")) {
         qDebug() << "Upstream error.";
@@ -39,7 +41,7 @@ QByteArray doRoll(QString rollRequest, QString ident) {
 
     // Parse request.
     qDebug() << "Parsing roll request:" << rollRequest;
-    QRegularExpression re(R"-(^(?<amount>\d+){,1}d(?<faces>\d+)(?<modifier>[+-]\d+){,1}(?<advdis>(adv)|(dis)){,1}$)-", QRegularExpression::CaseInsensitiveOption);
+    QRegularExpression re(R"-(^(?<amount>\d+){,1}d(?<faces>\d+)(?<modifier>[+-]\d+){,1}(?<advdis>(adv\+{,1})|(dis\+{,1})){,1}$)-", QRegularExpression::CaseInsensitiveOption);
     auto match = re.match(rollRequest);
 
     if(match.hasMatch()) {
@@ -49,18 +51,27 @@ QByteArray doRoll(QString rollRequest, QString ident) {
         uint diceFaces = match.captured("faces").toUInt();
         bool keepHighest = match.captured("advdis") == "adv";
         bool keepLowest = match.captured("advdis") == "dis";
+        bool ofThree = match.captured("advdis").contains('+');
         int modifier = match.captured("modifier").toInt();
 
-        // Calculate two rolls, starting at modifier.
+        // Calculate three rolls, starting at modifier.
         int total1 = modifier;
         int total2 = modifier;
+        int total3 = modifier;
         for(int i = 0; i < diceAmount; i++) total1 += rng.bounded(diceFaces) + 1;
         for(int i = 0; i < diceAmount; i++) total2 += rng.bounded(diceFaces) + 1;
+        for(int i = 0; i < diceAmount; i++) total3 += rng.bounded(diceFaces) + 1;
 
         // Return the 1st, or the highest/lowest if that option was picked.
         int total = total1;
-        if(keepHighest) total = std::max(total1, total2);
-        if(keepLowest)  total = std::min(total1, total2);
+        if(keepHighest) {
+            total = std::max(total1, total2);
+            if(ofThree) total = std::max(total, total3);
+        }
+        if(keepLowest) {
+            total = std::min(total1, total2);
+            if(ofThree) total = std::min(total, total3);
+        }
         qDebug() << "Emitting:" << total;
         return ret + QByteArray::number(total);
     }  else {
@@ -89,6 +100,8 @@ int main(int argc, char **argv) {
                 QByteArray result = doRoll(rollRequest, ident);
                 try {
                     benternet->send(result);
+                    result_queue.push_back(message + ',' + result);
+                    while(result_queue.size() > 20) result_queue.pop_front();
                 } catch(nzmqt::ZMQException &e) {
                     qDebug() << "ZMQException: " << e.what();
                 }
@@ -99,9 +112,23 @@ int main(int argc, char **argv) {
                 QByteArray result = doRollVs(doRoll(rollRequest, ident), dc, ident);
                 try {
                     benternet->send(result);
+                    result_queue.push_back(message + ',' + result);
+                    while(result_queue.size() > 20) result_queue.pop_front();
                 } catch(nzmqt::ZMQException &e) {
                     qDebug() << "ZMQException: " << e.what();
                 }
+            }
+        } else if(QString(message) == "dice>history") {
+            qDebug() << "Sending history...";
+            QByteArray result = "dice>result>\n";
+            for(auto item : result_queue) {
+                result += item + "\n";
+            }
+            result.chop(1);
+            try {
+                benternet->send(result);
+            } catch(nzmqt::ZMQException &e) {
+                qDebug() << "ZMQException: " << e.what();
             }
         }
     });
@@ -109,11 +136,14 @@ int main(int argc, char **argv) {
     // Subscribe to our endpoints.
     qDebug() << "Subscribing to endpoint...";
 
-    // Roll in the format dice>roll>(identifier>)XdY±Z[dis/adv]. Returns result.
+    // Roll in the format dice>roll>(identifier>)XdY±Z[dis(+)/adv(+)]. Returns result.
     benternet->subscribe("dice>roll>");
 
-    // Roll in the format dice>rollvs>(identifier>)XdY±Z[dis/adv]>DC. Returns true/false.
+    // Roll in the format dice>rollvs>(identifier>)XdY±Z[dis(+)/adv(+)]>DC. Returns true/false.
     benternet->subscribe("dice>rollvs>");
+
+    // Get the last (up to) 20 results.
+    benternet->subscribe("dice>history");
 
     qDebug() << "Starting event loop...";
     return a.exec();
